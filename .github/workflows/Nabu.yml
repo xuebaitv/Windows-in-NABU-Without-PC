@@ -121,10 +121,29 @@ jobs:
           curl -L https://github.com/Kumar-Jy/WOAInstaller/releases/download/files/Dism++10ARM.zip \
           -o ToolBox/Dism++.zip
 
-      - name: Download Woa-Helper
+      - name: Resolve latest WOA Helper APK
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          curl -L https://github.com/n00b69/woa-helper/releases/download/APK/BETAwoahelper1.8.4.44.apk \
-          -o woahelper.apk
+          curl -fsSL \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            https://api.github.com/repos/n00b69/woa-helper/releases/latest \
+            -o latest-woa-release.json
+
+          WOAHELPER_URL=$(jq -r '[.assets[] | select((.name | ascii_downcase | endswith(".apk") and contains("woahelper")) and ((.name | ascii_downcase | (contains("debug") or contains("xold"))) | not))] | sort_by(.created_at) | reverse | .[0].browser_download_url // empty' latest-woa-release.json)
+
+          if [ -z "$WOAHELPER_URL" ]; then
+            echo "Could not find a stable WOA Helper APK in the latest release" >&2
+            jq -r '"Tag: \(.tag_name)", "Assets: \(([.assets[].name] | join(", ")))"' latest-woa-release.json >&2
+            exit 1
+          fi
+
+          echo "WOA Helper: $WOAHELPER_URL"
+          echo "WOAHELPER_URL=$WOAHELPER_URL" >> $GITHUB_ENV
+
+      - name: Download Woa-Helper
+        run: curl -fL "$WOAHELPER_URL" -o woahelper.apk
 
       - name: Generate and copy SHA-256 checksums
         run: |
