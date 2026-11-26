@@ -17,10 +17,30 @@ jobs:
       - name: Install 7zip
         run: sudo apt-get update && sudo apt-get install -y p7zip-full
 
-      - name: Define driver and UEFI URLs
+      - name: Resolve latest driver and UEFI assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "DRIVER_URL=https://github.com/Kumar-Jy/Windows-in-NABU-Without-PC/releases/download/Drivers-And-UEFI/Nabu-Drivers.zip" >> $GITHUB_ENV
-          echo "UEFI_URL=https://github.com/Kumar-Jy/Windows-in-NABU-Without-PC/releases/download/Drivers-And-UEFI/SB-UEFI-v4.img" >> $GITHUB_ENV
+          curl -fsSL \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            https://api.github.com/repos/remtrik-stuff/MiPad5-Windows-Releases/releases/latest \
+            -o latest-release.json
+
+          DRIVER_URL=$(jq -r '.assets[] | select(.name | startswith("XiaomiPad5-Drivers-v") and endswith("-Desktop.7z")) | .browser_download_url' latest-release.json | head -n 1)
+          UEFI_URL=$(jq -r '.assets[] | select(.name | startswith("XiaomiPad5.UEFI-v") and endswith(".img") and (contains("_nSB") | not)) | .browser_download_url' latest-release.json | head -n 1)
+
+          if [ -z "$DRIVER_URL" ] || [ -z "$UEFI_URL" ]; then
+            echo "Could not find driver/UEFI assets in the latest release" >&2
+            jq -r '"Tag: \(.tag_name)", "Assets: \(([.assets[].name] | join(", ")))"' latest-release.json >&2
+            exit 1
+          fi
+
+          echo "Latest BSP: $(jq -r .tag_name latest-release.json)"
+          echo "Driver: $DRIVER_URL"
+          echo "UEFI: $UEFI_URL"
+          echo "DRIVER_URL=$DRIVER_URL" >> $GITHUB_ENV
+          echo "UEFI_URL=$UEFI_URL" >> $GITHUB_ENV
 
       - name: Set build date and artifact name
         run: |
