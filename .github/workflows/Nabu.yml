@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install 7zip
         run: sudo apt-get update && sudo apt-get install -y p7zip-full
@@ -166,7 +166,7 @@ jobs:
           rm -rf driver-temp checksum-temp driver.7z
 
       - name: Upload installer artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.ARTIFACT_NAME }}
           path: |
@@ -181,7 +181,7 @@ jobs:
           7z a "${ZIP_NAME}" installer ToolBox META-INF wininstaller.conf woahelper.apk
 
       - name: Upload release (GitHub Release)
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: Nabu-WinInstaller
           files: ${{ env.ZIP_NAME }}
